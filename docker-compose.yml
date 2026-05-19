@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: todo_db
+    environment:
+      POSTGRES_DB: todoapp
+      POSTGRES_USER: todoapp
+      POSTGRES_PASSWORD: todoapp
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todoapp -d todoapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    container_name: todo_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://todoapp:todoapp@db:5432/todoapp
+      JWT_SECRET: change-me-in-production
+      PASSWORD_SALT: change-me-in-production
+      CORS_ORIGIN: http://localhost:5173
+      DEMO_ADMIN_USERNAME: admin
+      DEMO_ADMIN_PASSWORD: admin123
+      DEMO_USER_USERNAME: demo
+      DEMO_USER_PASSWORD: demo123
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: todo_frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: /api
+      VITE_PROXY_TARGET: http://backend:3000
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres_data:
